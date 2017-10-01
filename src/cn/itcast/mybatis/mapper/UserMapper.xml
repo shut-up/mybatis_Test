@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace ：命名空间，用于隔离sql语句，对sql进行分类化管理。 -->
+<mapper namespace="cn.itcast.mybatis.mapper.UserMapper">
+
+	<!-- 对mapper指定 的namespace开启二级缓存-->
+	<cache type="org.mybatis.caches.ehcache.EhcacheCache" />
+
+	<!-- 定义sql片段 -->
+	<sql id="query_user_where">
+		<if test="userCustom!=null">
+				<if test="userCustom.sex!=null and userCustom.sex!=''">
+					and sex = #{userCustom.sex}
+				</if>
+				<if test="userCustom.username!=null and userCustom.sex!=''">
+					and username like '%${userCustom.username}%'
+				</if>
+				
+				<!-- 
+					使用foreach遍历所传入的ids
+					实现select * from user where id = 1 or id = 10 or id=16
+					collection:输入对象 的集合属性
+					item:每次遍历的对象名
+					open:开始遍历时要拼接的串
+					close
+					separator
+				 -->
+			<!-- 	<if test="ids!=null">
+					<foreach collection="ids" item="user_id" open="and (" close=")" separator="or">
+						id=${user_id}
+					</foreach>
+				</if> -->
+				
+				<!-- 
+					使用foreach遍历所传入的ids
+					实现select * from user where id in (1,10,16)
+					collection:输入对象 的集合属性
+					item:每次遍历的对象名
+					open:开始遍历时要拼接的串
+					close
+					separator
+				 -->
+				<if test="ids!=null">
+					<foreach collection="ids" item="user_id" open=" and id in (" close=")" separator=",">
+						${user_id}
+					</foreach>
+				</if>
+		</if>
+	</sql>
+
+	<resultMap type="user" id="userResultMap">
+		<id column="id_" property="id"/>
+		<result column="username_" property="username"/>
+	</resultMap>
+
+	<!-- 通过综合条件查询用户信息 -->
+	<select id="findUserList" parameterType="UserQueryVo" resultType="UserCustom">
+		select * from user 
+		<!-- where会自动删掉接在后面的第一个‘and’ -->
+		<where>
+			<include refid="query_user_where"></include>
+		</where>
+	</select>
+
+	<!-- 在映射文件中有很多sql语句 -->
+	<!-- 通过select语句执行数据库查询，
+		id：标识映射文件中的sql，
+		将来sql语句封装到mappedstatement对象中，所以将id 称为statement的id
+		#{}表示一个占位符
+		parameterType：指定输入参数的类型，这里指定int型
+		#{id}：其中的id表示接收输入的参数，参数名称是id，如果输入的参数是简单类型，#{}中的参数名可以任意，可以id，value
+		resultType：指定slq输出结果所映射的java对象类型
+	 -->
+	 
+	<select id="findUserById" parameterType="int" resultType="user">
+		select * from `user` WHERE id = #{value}
+	</select>
+	
+	<select id="findUserByIdResultMap" parameterType="int" resultMap="userResultMap">
+		select id id_,username username_ from `user` WHERE id = #{value}
+	</select>
+	
+	
+	<!--
+	 ${}表示要接收的sql串
+	 ${value}：其表示接收输入的参数，如果输入的参数是简单类型，${}中的参数名只可以是value
+	 -->
+	<select id="findUserByName" parameterType="string" resultType="user">
+		select * from `user` WHERE username like '%${value}%'
+	</select>
+	
+	<!-- 添加用户 -->
+	<insert id="insertUser" parameterType="user">
+	
+	<!-- keyProperty 将查询到主键值设置到resultType指定的对象的哪个属性
+		resultType指定LAST_INSERT_ID的结果类型-->
+		<selectKey keyProperty="id" order="AFTER" resultType="int">
+			select LAST_INSERT_ID()
+		</selectKey>
+	
+		insert into user(username,birthday,sex,address) values(#{username},#{birthday},#{sex},#{address})
+	</insert>
+	
+	<!-- 删除用户信息 -->
+	<delete id="deleteUser" parameterType="int" >
+		delete from user where id = #{id}
+	</delete>
+	
+	<!-- 更新用户信息 -->
+	<update id="updateUser" parameterType="user" >
+		update user set username=#{username},birthday=#{birthday},sex=#{sex},address=#{address} where id = #{id}
+	</update>
+	
+
+</mapper>
